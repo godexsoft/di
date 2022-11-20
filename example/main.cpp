@@ -1,4 +1,8 @@
 #include <di.hpp>
+
+#include <iostream>
+#include <string>
+
 using namespace di;
 
 class LogService {

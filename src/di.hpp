@@ -1,11 +1,7 @@
 #pragma once
 
-#include <functional>
-#include <iostream>
 #include <memory>
 #include <tuple>
-#include <type_traits>
-#include <unordered_map>
 
 namespace di {
 
