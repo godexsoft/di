@@ -1,5 +1,3 @@
-add_subdirectory ( ${PROJECT_SOURCE_DIR}/ext/googletest "ext/googletest" )
-
 set ( TEST_BIN ${CMAKE_PROJECT_NAME}_test )
 file ( GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.hpp *.cpp )
 set ( SOURCES ${TEST_SOURCES} )
