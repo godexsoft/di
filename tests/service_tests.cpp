@@ -24,7 +24,7 @@ struct Config {
 TEST(ServicesTest, CompileChecks) {
     [[maybe_unused]] Services<A, B> valid1;
     [[maybe_unused]] Services<B, A, C> valid2;
-    [[maybe_unused]] Services<const A, const B> valid3; // decays internally but only const get possible
+    [[maybe_unused]] Services<const A, const B> valid3; // only const get possible
 
     // Services<const A, B> s = valid3; // invalid - can't bind non-const B
     // [[maybe_unused]] Services<A, B, B> invalid - duplicates
@@ -36,9 +36,11 @@ TEST(ServicesTest, ConstUsage) {
     Services<A, B> ab;
     Services<B, A> ba   = ab;
     Services<const B> b = ba;
-    static_assert(std::is_same_v<decltype(b.get<B>()), std::shared_ptr<const B>>);
-    // can't mutate:
-    // b.get<B>()->value = 1;
+    auto ncb = b.get<B>(); // implicit const get
+    static_assert(std::is_same_v<decltype(ncb), std::shared_ptr<const B>>);
+
+    auto cb = ab.get<const B>(); // explicit const get
+    static_assert(std::is_same_v<decltype(cb), std::shared_ptr<const B>>);
 
     Services<Config, const B, A, C> top_level;
     top_level.get<Config>()->severity = 4; // can write

@@ -38,23 +38,67 @@ struct check_unique {
 };
 
 /**
- * @brief Represents a selection of services that can be passed around
+ * @brief A requirement for T to not be stored as a const in Types
  * 
- * @tparam Types List of types of the selection
+ * @tparam T 
+ * @tparam Types 
+ */
+template <typename T, typename... Types>
+concept NonConstServiceStored = not any_type_match<std::add_const_t<T>, Types...>::value;
+
+/**
+ * @brief A requirement for T to be stored as a const in Types
+ * 
+ * @tparam T 
+ * @tparam Types 
+ */
+template <typename T, typename... Types>
+concept ConstServiceStored = any_type_match<std::add_const_t<T>, Types...>::value;
+
+/**
+ * @brief A requirement for Types to be a pack of at least two types
+ * 
+ * @tparam Types 
  */
 template <typename... Types>
-class Services {
+concept TwoOrMoreInPack = sizeof...(Types) >= 2;
+
+/**
+ * @brief A requirement for each type in Types to be a unique type
+ * 
+ * @tparam Types 
+ */
+template <typename... Types>
+concept EachIsUnique = check_unique<std::decay_t<Types>...>::value;
+
+/**
+ * @brief Represents a selection of services that can be passed around cheaply
+ * 
+ * This template enables us to narrow the selection by simply specifying 
+ * only the types (or services) we need.
+ * 
+ * @tparam Types List of types of the selection (required to be unique)
+ */
+template <typename... Types>
+requires EachIsUnique<Types...> class Services {
     using data_t = std::tuple<std::shared_ptr<Types>...>;
-    std::enable_if_t<
-        check_unique<std::decay_t<Types>...>::value, data_t>
-        data_; // whole class is sfinaed away if typelist contains duplicate types
+    data_t data_;
 
 public:
+    /**
+     * @brief Default-constructs each service and stores it as a shared_ptr
+     */
     Services()
         : data_{ std::make_shared<Types>()... } {}
     Services(std::shared_ptr<Types>... ts)
         : data_{ ts... } {}
 
+    /**
+     * @brief Constructs a new (possibly narrower) selection by copying relevant services
+     * 
+     * @tparam SenderTypes (required for each type in Types to also be in SenderTypes)
+     * @param other The (possibly wider) services selection
+     */
     template <typename... SenderTypes>
     Services(Services<SenderTypes...> const &other) {
         static_assert((any_type_match<std::decay_t<Types>,
@@ -64,23 +108,49 @@ public:
         (set<decltype(other), Types>(other), ...);
     }
 
-    template <typename T, typename = std::enable_if_t<not any_type_match<std::add_const_t<T>, Types...>::value or std::is_const_v<T>>>
-    std::shared_ptr<T> get() const {
+    /**
+     * @brief Get a service by its type
+     * 
+     * If T is const (e.g. explicit const requested) the non-const service stored in the selection
+     * is promoted to a shared_ptr<const T> automatically.
+     * 
+     * @tparam T The type of service (required to be stored as non-const)
+     * @return std::shared_ptr<T> 
+     */
+    template <typename T>
+    std::shared_ptr<T> get() const requires NonConstServiceStored<T, Types...> {
         static_assert(any_type_match<std::decay_t<T>, Types...>::value,
             "Required type is not in typelist");
         return std::get<std::shared_ptr<std::decay_t<T>>>(data_);
     }
 
-    template <typename T, typename = std::enable_if_t<any_type_match<std::add_const_t<T>, Types...>::value>>
-    std::shared_ptr<const T> get() const {
+    /**
+     * @brief Get a const service by its type
+     * 
+     * @tparam T The type of service (required to be stored as const)
+     * @return std::shared_ptr<const T> 
+     */
+    template <typename T>
+    std::shared_ptr<const T> get() const requires ConstServiceStored<T, Types...> {
         static_assert(any_type_match<std::add_const_t<T>, Types...>::value,
             "Required type is not in typelist");
         return std::get<std::shared_ptr<const T>>(data_);
     }
 
-    template <typename... T, typename = std::enable_if_t<sizeof...(T) >= 2>>
-    auto get() {
-        return std::make_tuple(get<T>()...);
+    /**
+     * @brief Get multiple services at once
+     * 
+     * This is useful in combination with structured bindings:
+     * @code  
+     *   auto [a, b] = services.get<A, B>();
+     * @endcode
+     * 
+     * @tparam Ts
+     * @return auto Roughly std::tuple<std::shared_ptr<Ts>...>
+     */
+    template <typename... Ts>
+    auto get() requires TwoOrMoreInPack<Ts...> {
+        return std::make_tuple(get<Ts>()...);
     }
 
 private:
