@@ -76,8 +76,11 @@ static void Benchmark_ServicePassing(benchmark::State &state) {
 BENCHMARK(Benchmark_ServicePassing);
 
 static void Benchmark_DepsPassing(benchmark::State &state) {
-    A a; B b; C c; D d;
-    auto services = di::Deps<A, B, C, D>{std::ref(a), std::ref(b), std::ref(c), std::ref(d)};
+    A a;
+    B b;
+    C c;
+    D d;
+    auto services = di::Deps<A, B, C, D>{ std::ref(a), std::ref(b), std::ref(c), std::ref(d) };
     std::vector<DepsUser> vec;
     for(auto _ : state)
         benchmark::DoNotOptimize(vec.emplace_back(services));
@@ -85,7 +88,9 @@ static void Benchmark_DepsPassing(benchmark::State &state) {
 BENCHMARK(Benchmark_DepsPassing);
 
 static void Benchmark_RefWrapperPassing(benchmark::State &state) {
-    A a; B b; C c;
+    A a;
+    B b;
+    C c;
     std::vector<RefWrapperUser> vec;
     for(auto _ : state)
         benchmark::DoNotOptimize(vec.emplace_back(a, b, c));
@@ -122,7 +127,10 @@ static void Benchmark_ServiceCombining(benchmark::State &state) {
 BENCHMARK(Benchmark_ServiceCombining);
 
 static void Benchmark_DepsUsingStructuredBindings(benchmark::State &state) {
-    A a; B b; C c; D d;
+    A a;
+    B b;
+    C c;
+    D d;
     auto deps = di::Deps<A, B, C, D>{ std::ref(a), std::ref(b), std::ref(c), std::ref(d) };
     for(auto _ : state) {
         auto [aa, cc, dd] = deps.get<A, C, D>();

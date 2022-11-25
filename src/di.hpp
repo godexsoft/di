@@ -88,7 +88,7 @@ concept EachIsUnique = check_unique<std::decay_t<Types>...>::value;
  * 
  * @tparam Types List of types of the selection (required to be unique)
  */
-template <template<typename> typename HolderType, typename... Types>
+template <template <typename> typename HolderType, typename... Types>
 requires EachIsUnique<Types...> class Selection {
     using data_t = std::tuple<HolderType<Types>...>;
     data_t data_;
@@ -99,7 +99,7 @@ public:
      */
     Selection() requires std::is_same_v<HolderType<void>, std::shared_ptr<void>>
         : data_{ std::make_shared<Types>()... } {}
-    
+
     /**
      * @brief Construct a selection directly from data to be stored
      * 
@@ -115,9 +115,8 @@ public:
      * @param other The (possibly wider) Selection selection
      */
     template <typename... SenderTypes>
-    Selection(Selection<HolderType, SenderTypes...> const &other) requires (ServiceIsStored<Types, SenderTypes...> && ...)
-        : data_(other.template get<Types...>())
-    {
+    Selection(Selection<HolderType, SenderTypes...> const &other) requires(ServiceIsStored<Types, SenderTypes...> &&...)
+        : data_(other.template get<Types...>()) {
     }
 
     /**
@@ -162,12 +161,12 @@ public:
     }
 
 private:
-    template <template<typename> typename HType, typename... SenderTypes, typename... OtherTypes>
+    template <template <typename> typename HType, typename... SenderTypes, typename... OtherTypes>
     friend constexpr Selection<HType, SenderTypes..., OtherTypes...> extend(
         Selection<HType, SenderTypes...> const &selection,
         HType<OtherTypes>... others);
 
-    template <template<typename> typename HType, typename... LTypes, typename... RTypes>
+    template <template <typename> typename HType, typename... LTypes, typename... RTypes>
     friend constexpr Selection<HType, LTypes..., RTypes...> combine(
         Selection<HType, LTypes...> const &lhs,
         Selection<HType, RTypes...> const &rhs);
@@ -198,7 +197,7 @@ private:
  * @param others Objects to add to the selection
  * @return constexpr Selection<SenderTypes..., OtherTypes...> Extended selection
  */
-template <template<typename> typename HType, typename... SenderTypes, typename... OtherTypes>
+template <template <typename> typename HType, typename... SenderTypes, typename... OtherTypes>
 constexpr Selection<HType, SenderTypes..., OtherTypes...> extend(
     Selection<HType, SenderTypes...> const &selection,
     HType<OtherTypes>... others) {
@@ -219,7 +218,7 @@ constexpr Selection<HType, SenderTypes..., OtherTypes...> extend(
  * @param rhs Right selection
  * @return constexpr Selection<LTypes..., RTypes...> Combined selection
  */
-template <template<typename> typename HType, typename... LTypes, typename... RTypes>
+template <template <typename> typename HType, typename... LTypes, typename... RTypes>
 constexpr Selection<HType, LTypes..., RTypes...> combine(
     Selection<HType, LTypes...> const &lhs,
     Selection<HType, RTypes...> const &rhs) {
@@ -248,10 +247,10 @@ constexpr auto combine(
     return combine(combine(lhs, mid), others...);
 }
 
-template<typename... Types>
+template <typename... Types>
 using Services = Selection<std::shared_ptr, Types...>;
 
-template<typename... Types>
+template <typename... Types>
 using Deps = Selection<std::reference_wrapper, Types...>;
 
 } // namespace di

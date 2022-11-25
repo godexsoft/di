@@ -1,0 +1,23 @@
+#!/bin/bash
+
+exec 1>&2
+
+# paths to check and re-format
+sources="src tests benchmarks example"
+formatter="clang-format -i"
+
+first=$(git diff $sources)
+find $sources -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 | xargs -0 $formatter
+second=$(git diff $sources)
+changes=$(diff <(echo "$first") <(echo "$second") | wc -l | xargs)
+
+if [ "$changes" != "0" ]; then
+    cat <<\EOF
+                                   WARNING 
+-----------------------------------------------------------------------------
+  Automatically re-formatted code with `clang-format` - commit was aborted.
+  Please manually add any updated files and commit again.
+-----------------------------------------------------------------------------
+EOF
+    exit 1
+fi
