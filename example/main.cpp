@@ -51,8 +51,8 @@ private:
 int main() {
     auto log_service = std::make_shared<LogService>();
     auto net_service = std::make_shared<NetworkService>(log_service);
-    auto watchdog    = std::make_shared<Watchdog>(
-        Services(log_service, net_service)); // log_service is const inside watchdog
+    auto services    = Services<LogService, NetworkService>(log_service, net_service);
+    auto watchdog    = std::make_shared<Watchdog>(services); // log_service binds as const inside watchdog
 
     watchdog->test();
     return 0;
