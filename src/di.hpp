@@ -1,7 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <tuple>
+#include <variant>
 
 namespace di {
 
@@ -247,10 +249,64 @@ constexpr auto combine(
     return combine(combine(lhs, mid), others...);
 }
 
+/**
+ * @brief 
+ * 
+ * @tparam T 
+ */
+template <typename T>
+struct LazyHolder {
+    template <class... Ts>
+    struct overloaded : Ts... { using Ts::operator()...; };
+    template <class... Ts>
+    overloaded(Ts...)->overloaded<Ts...>;
+    using ptr_t     = std::shared_ptr<T>;
+    using factory_t = std::function<ptr_t()>;
+    using variant_t = std::variant<ptr_t, factory_t>;
+    using data_t    = std::shared_ptr<variant_t>;
+
+    data_t data_;
+
+    template <typename Fn>
+    LazyHolder(Fn factory)
+        : data_{ std::make_shared<variant_t>(factory) } {
+    }
+
+    LazyHolder(ptr_t ptr)
+        : data_{ std::make_shared<variant_t>(ptr) } {
+    }
+
+    ptr_t get() {
+        // clang-format off
+        return std::visit(
+            overloaded{
+                [](ptr_t ptr) {
+                    return ptr;
+                },
+                [this](factory_t factory) mutable {
+                    // todo: maybe lock here or smth
+                    return data_->template emplace<ptr_t>(factory());
+                } 
+            }, *data_);
+        // clang-format on
+    }
+
+    ptr_t operator->() {
+        return get();
+    }
+
+    ptr_t operator*() {
+        return get();
+    }
+};
+
 template <typename... Types>
 using Services = Selection<std::shared_ptr, Types...>;
 
 template <typename... Types>
 using Deps = Selection<std::reference_wrapper, Types...>;
+
+template <typename... Types>
+using LazyServices = Selection<LazyHolder, Types...>;
 
 } // namespace di

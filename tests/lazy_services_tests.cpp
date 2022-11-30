@@ -6,56 +6,11 @@
 
 using namespace di;
 
-template <typename T>
-struct MaybeLazyHolder {
-    template <class... Ts>
-    struct overloaded : Ts... { using Ts::operator()...; };
-    template <class... Ts>
-    overloaded(Ts...)->overloaded<Ts...>;
-    using ptr_t     = std::shared_ptr<T>;
-    using factory_t = std::function<ptr_t()>;
-    using variant_t = std::variant<ptr_t, factory_t>;
-
-    variant_t data_;
-
-    template <typename Fn>
-    MaybeLazyHolder(Fn factory)
-        : data_{ factory } {
-    }
-
-    MaybeLazyHolder(ptr_t ptr)
-        : data_{ ptr } {
-    }
-
-    ptr_t get() {
-        return std::visit(overloaded{
-                              [](ptr_t ptr) {
-                                  return ptr;
-                              },
-                              [this](factory_t factory) mutable {
-                                  // todo: maybe lock here or smth
-                                  return data_.template emplace<ptr_t>(factory());
-                              } },
-            data_);
-    }
-
-    ptr_t operator->() {
-        return get();
-    }
-
-    ptr_t operator*() {
-        return get();
-    }
-};
-
-template <typename... Types>
-using MaybeLazyServices = Selection<MaybeLazyHolder, Types...>;
-
-TEST(MaybeLazyServicesTest, LazyOnly) {
+TEST(LazyServicesTest, LazyOnly) {
     auto a_created = false;
     auto b_created = false;
 
-    auto services = MaybeLazyServices<A, B>{
+    auto services = LazyServices<A, B>{
         [&a_created] {
             a_created = true;
             return std::make_shared<A>();
@@ -81,20 +36,48 @@ TEST(MaybeLazyServicesTest, LazyOnly) {
     EXPECT_TRUE(b_created);
 }
 
-TEST(MaybeLazyServicesTest, LazyAndEager) {
-    auto a_created = false;
-    auto services  = MaybeLazyServices<A, B>{
-        [&a_created] {
-            a_created = true;
+TEST(LazyServicesTest, LazyAndEager) {
+    auto a_create_count = 0;
+    auto services       = LazyServices<A, B>{
+        [&a_create_count] {
+            ++a_create_count;
             return std::make_shared<A>();
         },                    // lazy
         std::make_shared<B>() // eager
     };
 
-    EXPECT_FALSE(a_created);
+    EXPECT_EQ(a_create_count, 0);
     auto a = services.get<A>();
-    EXPECT_FALSE(a_created);
+    EXPECT_EQ(a_create_count, 0);
 
     [[maybe_unused]] auto _ = a->value; // lazy
+    EXPECT_EQ(a_create_count, 1);
+    [[maybe_unused]] auto _2 = a->value;
+    EXPECT_EQ(a_create_count, 1);
+    [[maybe_unused]] auto _3 = a.get();
+    EXPECT_EQ(a_create_count, 1);
+
+    [[maybe_unused]] auto aa = services.get<A>(); // another
+    EXPECT_EQ(a_create_count, 1);
+    [[maybe_unused]] auto _21 = aa->value;
+    EXPECT_EQ(a_create_count, 1);
+    [[maybe_unused]] auto _31 = aa.get();
+    EXPECT_EQ(a_create_count, 1);
+}
+
+TEST(LazyServicesTest, CreatedOnlyOnce) {
+    auto a_created = false;
+    auto services  = LazyServices<A>{
+        [&a_created] {
+            a_created = true;
+            return std::make_shared<A>();
+        }
+    };
+
+    EXPECT_FALSE(a_created);
+    auto a = services.get<A>(); // a is LazyHolder<A>
+    EXPECT_FALSE(a_created);
+    auto original = services.get<A>().get(); // explicitly load
     EXPECT_TRUE(a_created);
+    EXPECT_EQ(original, a.get());
 }
