@@ -58,6 +58,24 @@ static void Benchmark_ServiceCreation(benchmark::State &state) {
 }
 BENCHMARK(Benchmark_ServiceCreation);
 
+static void Benchmark_LazyServiceCreation(benchmark::State &state) {
+    for(auto _ : state)
+        benchmark::DoNotOptimize(di::LazyServices<A, B, C>(
+            [] { return std::make_shared<A>(); },
+            [] { return std::make_shared<B>(); },
+            [] { return std::make_shared<C>(); }));
+}
+BENCHMARK(Benchmark_LazyServiceCreation);
+
+static void Benchmark_LazyServiceCreationButAllEager(benchmark::State &state) {
+    for(auto _ : state)
+        benchmark::DoNotOptimize(di::LazyServices<A, B, C>(
+            std::make_shared<A>(),
+            std::make_shared<B>(),
+            std::make_shared<C>()));
+}
+BENCHMARK(Benchmark_LazyServiceCreationButAllEager);
+
 static void Benchmark_SharedPtrCreation(benchmark::State &state) {
     for(auto _ : state) {
         benchmark::DoNotOptimize(std::make_shared<A>());
