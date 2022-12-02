@@ -1,6 +1,6 @@
 #pragma once
 
-#include <di/ext.hpp>
+#include <di/combinators.hpp>
 #include <di/lazy.hpp>
 #include <di/selection.hpp>
 #include <di/util.hpp>

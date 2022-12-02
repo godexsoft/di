@@ -2,6 +2,8 @@
 
 #include <di/selection.hpp>
 
+#include <mutex>
+
 namespace di {
 
 /**
@@ -24,6 +26,7 @@ class LazyHolder {
     using data_t    = std::shared_ptr<variant_t>;
 
     data_t data_;
+    inline static std::mutex mtx_; /*! One mutex per service type */
 
 public:
     /**
@@ -52,6 +55,8 @@ public:
      * @return ptr_t
      */
     ptr_t get() {
+        std::lock_guard<std::mutex> g(mtx_);
+
         // clang-format off
         return std::visit(
             overloaded{
@@ -59,7 +64,6 @@ public:
                     return ptr;
                 },
                 [this](factory_t factory) mutable {
-                    // todo: maybe lock here or smth
                     return data_->template emplace<ptr_t>(factory());
                 } 
             }, *data_);

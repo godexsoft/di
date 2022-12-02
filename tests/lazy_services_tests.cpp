@@ -1,8 +1,10 @@
 #include "types.hpp"
 #include <di.hpp>
 
+#include <atomic>
 #include <gtest/gtest.h>
 #include <string>
+#include <thread>
 
 using namespace di;
 
@@ -80,4 +82,42 @@ TEST(LazyServicesTest, CreatedOnlyOnce) {
     auto original = services.get<A>().get(); // explicitly load
     EXPECT_TRUE(a_created);
     EXPECT_EQ(original, a.get());
+}
+
+TEST(LazyServicesTest, MultiThreadLazyLoadsOnce) {
+    auto a_create_count = 0;
+    auto b_create_count = 0;
+    auto services       = LazyServices<A, B>{
+        [&a_create_count] {
+            ++a_create_count;
+            return std::make_shared<A>();
+        },
+        [&b_create_count] {
+            ++b_create_count;
+            return std::make_shared<B>();
+        }
+    };
+
+    EXPECT_EQ(a_create_count, 0);
+    std::atomic<std::size_t> calls = 0;
+
+    auto fn = [&services, &calls] {
+        ++calls;
+        for(auto i = 0; i < 100; ++i) {
+            [[maybe_unused]] auto a = services.get<A>().get();
+            [[maybe_unused]] auto b = services.get<B>().get();
+        }
+    };
+
+    auto threads      = std::vector<std::thread>{};
+    auto thread_count = 64;
+
+    for(auto i = 0; i < thread_count; ++i)
+        threads.emplace_back(fn);
+    for(auto &thread : threads)
+        thread.join();
+
+    EXPECT_EQ(a_create_count, 1);
+    EXPECT_EQ(b_create_count, 1);
+    EXPECT_EQ(calls, thread_count);
 }
