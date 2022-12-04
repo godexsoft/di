@@ -6,6 +6,12 @@
 
 namespace di {
 
+template <class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
 /**
  * @brief A simple Selection holder type that allows lazy loading. 
  * 
@@ -16,10 +22,6 @@ namespace di {
  */
 template <typename T>
 class LazyHolder {
-    template <class... Ts>
-    struct overloaded : Ts... { using Ts::operator()...; };
-    template <class... Ts>
-    overloaded(Ts...)->overloaded<Ts...>;
     using ptr_t     = std::shared_ptr<T>;
     using factory_t = std::function<ptr_t()>;
     using variant_t = std::variant<ptr_t, factory_t>;
