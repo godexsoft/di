@@ -12,7 +12,7 @@ namespace di {
  */
 template <typename T, typename... Types>
 struct any_type_match {
-    constexpr static bool value = (std::is_same_v<T, Types> || ...);
+    static constexpr bool value = (std::is_same_v<T, Types> || ...);
 };
 
 /**
@@ -23,7 +23,7 @@ struct any_type_match {
  */
 template <typename T, typename... Types>
 struct type_match_count {
-    constexpr static std::size_t value = (std::is_same_v<T, Types> + ...);
+    static constexpr std::size_t value = (std::is_same_v<T, Types> + ...);
 };
 
 /**

@@ -69,7 +69,7 @@ public:
     /**
      * @brief Default-constructs each service and stores it as a shared_ptr
      */
-    Selection() requires std::is_same_v<HolderType<void>, std::shared_ptr<void>>
+    constexpr Selection() requires std::is_same_v<HolderType<void>, std::shared_ptr<void>>
         : data_{ std::make_shared<Types>()... } {}
 
     /**
@@ -77,7 +77,7 @@ public:
      * 
      * @param ts The data to store
      */
-    Selection(HolderType<Types>... ts)
+    constexpr Selection(HolderType<Types>... ts)
         : data_{ ts... } {}
 
     /**
@@ -87,7 +87,7 @@ public:
      * @param other The (possibly wider) Selection selection
      */
     template <typename... SenderTypes>
-    Selection(Selection<HolderType, SenderTypes...> const &other) requires(ServiceIsStored<Types, SenderTypes...> &&...)
+    constexpr Selection(Selection<HolderType, SenderTypes...> const &other) requires(ServiceIsStored<Types, SenderTypes...> &&...)
         : data_(other.template get<Types...>()) {
     }
 
@@ -101,7 +101,7 @@ public:
      * @return HolderType<T> 
      */
     template <typename T>
-    HolderType<T> get() const requires NonConstServiceStored<T, Types...> {
+    constexpr HolderType<T> get() const requires NonConstServiceStored<T, Types...> {
         return std::get<HolderType<std::decay_t<T>>>(data_);
     }
 
@@ -112,7 +112,7 @@ public:
      * @return std::shared_ptr<const T> 
      */
     template <typename T>
-    HolderType<const T> get() const requires ConstServiceStored<T, Types...> {
+    constexpr HolderType<const T> get() const requires ConstServiceStored<T, Types...> {
         return std::get<HolderType<const T>>(data_);
     }
 
@@ -128,11 +128,14 @@ public:
      * @return auto Roughly std::tuple<std::shared_ptr<Ts>...>
      */
     template <typename... Ts>
-    std::tuple<HolderType<Ts>...> get() const requires TwoOrMoreInPack<Ts...> {
+    constexpr std::tuple<HolderType<Ts>...> get() const requires TwoOrMoreInPack<Ts...> {
         return std::make_tuple<HolderType<Ts>...>(get<Ts>()...);
     }
 
 private:
+    template <typename... Ts>
+    friend constexpr decltype(auto) get(auto const &selection);
+
     template <template <typename> typename HType, typename... SenderTypes, typename... OtherTypes>
     friend constexpr Selection<HType, SenderTypes..., OtherTypes...> extend(
         Selection<HType, SenderTypes...> const &selection,
@@ -148,16 +151,6 @@ private:
         LService const &lhs,
         MService const &mid,
         Others const &... others) -> decltype(auto);
-
-    template <typename S, typename T>
-    void set(S const &other) {
-        std::get<HolderType<T>>(data_) = other.template get<std::decay_t<T>>();
-    }
-
-    template <typename T>
-    void set(HolderType<T> other) {
-        std::get<HolderType<T>>(data_) = other;
-    }
 };
 
 } // namespace di

@@ -3,6 +3,9 @@
 #include <benchmark/benchmark.h>
 #include <string>
 
+// todo: need to run each benchmark multiple times to produce avg
+// todo2: threads?
+
 struct A {
     int value = 1234;
 };

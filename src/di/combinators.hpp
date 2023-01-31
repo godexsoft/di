@@ -63,4 +63,14 @@ constexpr auto combine(
     return combine(combine(lhs, mid), others...);
 }
 
+/**
+ * @brief Extension helper for Deps automatically adds std::ref
+ */
+template <typename... SenderTypes, typename... OtherTypes>
+constexpr Selection<std::reference_wrapper, SenderTypes..., OtherTypes...> extend(
+    Selection<std::reference_wrapper, SenderTypes...> const &selection,
+    OtherTypes &... others) {
+    return extend(selection, std::ref(others)...);
+}
+
 } // namespace di

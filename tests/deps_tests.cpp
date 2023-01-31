@@ -29,12 +29,25 @@ TEST(DepsTest, Extending) {
     A a;
     B b;
     C c;
+    const D d;
     Deps<A, B> deps{ a, b };
     Deps<A, B, C> test     = extend(deps, std::ref(c));
     Deps<A, const B, C> hm = test;
 
     // deps is <A, B>
     // auto invalid = extend(deps, std::ref(b)); - fails to add one more B dep
+
+    auto d1                  = Deps<A, B>{ a, b };
+    [[maybe_unused]] auto d2 = extend(d1, c);
+    static_assert(std::is_same_v<decltype(d2), Deps<A, B, C>>);
+
+    auto d3                  = Deps<const A, B>{ a, b }; // explicitly const A
+    [[maybe_unused]] auto d4 = extend(d3, c, d);         // d is const already
+    static_assert(std::is_same_v<decltype(d4), Deps<const A, B, C, const D>>);
+
+    auto d5                  = Deps<A, B>{ a, b };
+    [[maybe_unused]] auto d6 = extend(d5, static_cast<const C>(c), d); // promote to const
+    static_assert(std::is_same_v<decltype(d6), Deps<A, B, const C, const D>>);
 }
 
 TEST(DepsTest, Combining) {

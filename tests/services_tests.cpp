@@ -88,3 +88,29 @@ TEST(ServicesTest, UsingStructuredBindings) {
     static_assert(std::is_same_v<decltype(a), std::shared_ptr<A>>);
     static_assert(std::is_same_v<decltype(b), std::shared_ptr<const B>>);
 }
+
+TEST(ServicesTest, FreeFunctionGet) {
+    Services<A, B> ab;
+    Services<B, A> ba   = ab;
+    Services<const B> b = ba;
+    auto ncb            = get<B>(b); // implicit const get
+    static_assert(std::is_same_v<decltype(ncb), std::shared_ptr<const B>>);
+
+    auto cb = get<const B>(ab); // explicit const get
+    static_assert(std::is_same_v<decltype(cb), std::shared_ptr<const B>>);
+
+    Services<Config, const B, A, C> top_level;
+    get<Config>(top_level)->severity = 4; // can write
+
+    Services<const Config, A> a_user = top_level; // severity should be 4 here too
+    ASSERT_EQ(get<Config>(a_user)->severity, 4);  // can only read
+    get<A>(a_user)->value = 420;                  // can mutate A
+    ASSERT_EQ(get<A>(a_user)->value, 420);
+}
+
+TEST(ServicesTest, FreeFunctionTupleGet) {
+    Services<A, B, C> abc;
+    auto [a, b] = get<A, const B>(abc);
+    static_assert(std::is_same_v<decltype(a), std::shared_ptr<A>>);
+    static_assert(std::is_same_v<decltype(b), std::shared_ptr<const B>>);
+}
